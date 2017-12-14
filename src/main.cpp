@@ -9,6 +9,7 @@
 // Local libraries
 #include "binarization.hpp"
 #include "feature_extraction.hpp"
+#include "geometry.hpp"
 #include "segmentation.hpp"
 #include "tools.hpp"
 
@@ -25,6 +26,7 @@ tuple<cv::Mat, double> marker_colour_pipeline(cv::Mat image, double success,
     vector< vector<cv::Point> > blue_contours = get<1>(blues);
     vector< vector<double> > blue_cntrs =
             feature_extraction::get_centers(blue_contours);
+    // geometry::order_centers(blue_cntrs);
     // Get the red circles position.
     cv::Mat red_bins = binarization::binarize_red(image);
     auto reds = segmentation::get_contours(red_bins);
@@ -59,14 +61,23 @@ tuple<cv::Mat, double> marker_corn_pipeline(cv::Mat image, double success,
                                             cv::Mat ref_descriptors,
                                             vector<cv::KeyPoint> ref_keypoints,
                                             cv::Mat ref_image, bool show) {
+    chrono::high_resolution_clock::time_point t_i;
+    chrono::high_resolution_clock::time_point t_1;
+    chrono::high_resolution_clock::time_point t_2;
+    chrono::high_resolution_clock::time_point t_f;
+    if (success == 0) {
+        t_i = chrono::high_resolution_clock::now();
+    }
     cv::Mat result_img;
+    // Use SURF algorithm for getting the keypoints and descriptors of the image
     auto surf_result = feature_extraction::get_surf_keypoints(image);
     vector<cv::KeyPoint> keypoints = get<0>(surf_result);
     cv::Mat descriptors = get<1>(surf_result);
+    if (success == 0) {
+        t_1 = chrono::high_resolution_clock::now();
+    }
     // Matching descriptor vectors with a brute force matcher
     cv::BFMatcher matcher(cv::NORM_L2);
-    // vector<cv::DMatch> matches;
-    // matcher.match(ref_descriptors, descriptors, matches);
     // Sort the matches using the k-means algorithm, with 2 clusters.
     vector< vector<cv::DMatch> > matches;
     matcher.knnMatch(ref_descriptors, descriptors, matches, 2);
@@ -86,13 +97,34 @@ tuple<cv::Mat, double> marker_corn_pipeline(cv::Mat image, double success,
         object.push_back(ref_keypoints[good_matches[i].queryIdx].pt);
         scene.push_back(keypoints[good_matches[i].trainIdx].pt);
     }
-
+    if (success == 0) {
+        t_2 = chrono::high_resolution_clock::now();
+    }
     // Draw matches
     if (show == true) {
         cv::drawMatches(ref_image, ref_keypoints, image, keypoints,
                         good_matches, result_img);
-        result_img = feature_extraction::get_marker_corners(ref_image, image,
-                result_img, object, scene);
+    }
+    auto result = feature_extraction::get_marker_corners(ref_image, image,
+            result_img, object, scene, show);
+    vector<cv::Point2f> corners = get<0>(result);
+    result_img = get<1>(result);
+    if (success == 0) {
+        t_f = chrono::high_resolution_clock::now();
+    }
+    if (success == 0) {
+        auto t_d1 = chrono::duration_cast<chrono::microseconds>
+                (t_1 - t_i).count();
+        auto t_d2 = chrono::duration_cast<chrono::microseconds>
+                (t_2 - t_1).count();
+        auto t_tot = chrono::duration_cast<chrono::microseconds>
+                (t_f - t_i).count();
+        cout << "SURF algorithm time: " << t_d1 << "us\n";
+        cout << "Matching time: " << t_d2 << "us\n";
+        cout << "Total time: " << t_tot << "us\n\n";
+    }
+    if (corners.size() == 4) {
+        success += 1;
     }
     return make_tuple(result_img, success);
 }

@@ -97,9 +97,9 @@ namespace feature_extraction {
         return make_tuple(keypoints, descriptors);
     }
 
-    cv::Mat get_marker_corners(cv::Mat ref_img, cv::Mat image,
-                               cv::Mat result_img, vector<cv::Point2f> object,
-                               vector<cv::Point2f> scene) {
+    tuple<vector<cv::Point2f>, cv::Mat> get_marker_corners(cv::Mat ref_img,
+            cv::Mat image, cv::Mat result_img, vector<cv::Point2f> object,
+            vector<cv::Point2f> scene, bool show) {
         // Get homography, using RANSAC algorithm
         cv::Mat H = findHomography(object, scene, CV_RANSAC);
         //-- Get the corners from the scene image
@@ -110,19 +110,25 @@ namespace feature_extraction {
         obj_corners[3] = cvPoint(0, ref_img.rows);
         vector<cv::Point2f> corners(4);
         cv::perspectiveTransform(obj_corners, corners, H);
+        for (auto idx = 0; idx < 4; ++idx) {
+            cout << "Point " << idx << ": ";
+            cout << "(" << corners[idx].x << ", " << corners[idx].y << ")\n";
+        }
         //-- Draw lines between the corners
-        cv::line(result_img, corners[0]+cv::Point2f(ref_img.cols, 0),
-                 corners[1]+cv::Point2f(ref_img.cols, 0),
-                 cv::Scalar(0, 255, 0), 4);
-        cv::line(result_img, corners[1]+cv::Point2f(ref_img.cols, 0),
-                 corners[2]+cv::Point2f(ref_img.cols, 0),
-                 cv::Scalar(0, 255, 0), 4);
-        cv::line(result_img, corners[2]+cv::Point2f(ref_img.cols, 0),
-                 corners[3]+cv::Point2f(ref_img.cols, 0),
-                 cv::Scalar(0, 255, 0), 4);
-        cv::line(result_img, corners[3]+cv::Point2f(ref_img.cols, 0),
-                 corners[0]+cv::Point2f(ref_img.cols, 0),
-                 cv::Scalar(0, 255, 0), 4);
-        return result_img;
+        if (show == true) {
+            cv::line(result_img, corners[0]+cv::Point2f(ref_img.cols, 0),
+                     corners[1]+cv::Point2f(ref_img.cols, 0),
+                     cv::Scalar(0, 255, 0), 4);
+            cv::line(result_img, corners[1]+cv::Point2f(ref_img.cols, 0),
+                     corners[2]+cv::Point2f(ref_img.cols, 0),
+                     cv::Scalar(0, 255, 0), 4);
+            cv::line(result_img, corners[2]+cv::Point2f(ref_img.cols, 0),
+                     corners[3]+cv::Point2f(ref_img.cols, 0),
+                     cv::Scalar(0, 255, 0), 4);
+            cv::line(result_img, corners[3]+cv::Point2f(ref_img.cols, 0),
+                     corners[0]+cv::Point2f(ref_img.cols, 0),
+                     cv::Scalar(0, 255, 0), 4);
+        }
+        return make_tuple(corners, result_img);
     }
 }
