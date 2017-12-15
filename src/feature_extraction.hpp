@@ -29,23 +29,17 @@ namespace feature_extraction {
         return centers;
     }
 
-    vector<double> get_marker_centre(vector< vector<double> > red_centres,
-                                     vector< vector<double> > blue_centres) {
+    vector< vector<double> > get_interest_points(
+            vector< vector<double> > red_centres,
+            vector< vector<double> > blue_centres) {
         vector<double> centre;
         vector<double> blue_circles_pos_sum = {0, 0};
+        vector< vector<double> > ordered_centres;
         for (auto b_idx = 0; b_idx < blue_centres.size(); ++b_idx) {
             blue_circles_pos_sum[0] += blue_centres[b_idx][0];
             blue_circles_pos_sum[1] += blue_centres[b_idx][1];
         }
-        if (red_centres.size()==1 && blue_centres.size()==3) {
-            centre = {0, 0};
-            vector<double> total_sum = {0, 0};
-            total_sum[0] = blue_circles_pos_sum[0] + red_centres[0][0];
-            total_sum[1] = blue_circles_pos_sum[1] + red_centres[0][1];
-            centre[0] = total_sum[0] / 4;
-            centre[1] = total_sum[1] / 4;
-        }
-        else if (blue_centres.size()==3) {
+        if (blue_centres.size()==3) {
             cout << "using 3 blue circles for centre detection.\n";
             centre = {0, 0};
             vector<double> lengths = {0, 0, 0};
@@ -60,28 +54,67 @@ namespace feature_extraction {
             int maximum = 0;
             int idx_1;
             int idx_2;
+            int idx_middle;
             for (auto i = 0; i < lengths.size(); i++)
                 if (lengths[i] > maximum) {
                     maximum = lengths[i];
                     idx_1 = i;
-                    if (i==lengths.size()-1){
-                        idx_2 = 0;
-                    }
-                    else {
-                        idx_2 = i + 1;
-                    }
+                if (i==0){
+                    idx_middle = lengths.size()-1;
+                    idx_2 = i + 1;
+                }
+                else if (i==lengths.size()-1) {
+                    idx_middle = i - 1;
+                    idx_2 = 0;
+                }
+                else {
+                    idx_middle = i - 1;
+                    idx_2 = i + 1;
+                }
                 }
             // The marker centre is the middle point between the 2 farthest away
             // circles.
             centre[0] = (blue_centres[idx_1][0]+blue_centres[idx_2][0]) / 2;
             centre[1] = (blue_centres[idx_1][1]+blue_centres[idx_2][1]) / 2;
+            ordered_centres.push_back(centre);
+            ordered_centres.push_back(blue_centres[idx_middle]);
+            // Order the triangle vertices
+            if (blue_centres[idx_middle][0] < centre[0]) {
+                if (blue_centres[idx_1][1] < blue_centres[idx_2][1]) {
+                    ordered_centres.push_back(blue_centres[idx_1]);
+                    ordered_centres.push_back(blue_centres[idx_2]);
+                }
+                else {
+                    ordered_centres.push_back(blue_centres[idx_2]);
+                    ordered_centres.push_back(blue_centres[idx_1]);
+                }
+            }
+            else {
+                if (blue_centres[idx_1][1] >= blue_centres[idx_2][1]) {
+                    ordered_centres.push_back(blue_centres[idx_1]);
+                    ordered_centres.push_back(blue_centres[idx_2]);
+                }
+                else {
+                    ordered_centres.push_back(blue_centres[idx_2]);
+                    ordered_centres.push_back(blue_centres[idx_1]);
+                }
+            }
         } 
+        else if (red_centres.size()==1 && blue_centres.size()==3) {
+            centre = {0, 0};
+            vector<double> total_sum = {0, 0};
+            total_sum[0] = blue_circles_pos_sum[0] + red_centres[0][0];
+            total_sum[1] = blue_circles_pos_sum[1] + red_centres[0][1];
+            centre[0] = total_sum[0] / 4;
+            centre[1] = total_sum[1] / 4;
+            ordered_centres.push_back(centre);
+        }
         else {
             cout << "Not a valid number of circles!\n"
                     << red_centres.size() << " red circles and "
                     << blue_centres.size() << " blue circles\n";
         }
-        return centre;
+        return ordered_centres;
     }
 
     tuple<vector<cv::KeyPoint>, cv::Mat> get_surf_keypoints(cv::Mat image) {

@@ -35,20 +35,23 @@ tuple<cv::Mat, double> marker_colour_pipeline(cv::Mat image, double success,
     vector< vector<double> > red_cntrs =
             feature_extraction::get_centers(red_contours);
     // Get the marker centre.
-    vector<double> marker_centre = 
-            feature_extraction::get_marker_centre(red_cntrs, blue_cntrs);
+    vector< vector<double> > interest_points = 
+            feature_extraction::get_interest_points(red_cntrs, blue_cntrs);
     // Draw the found circles on the shapes image
     if (show == true) {
         shapes = tools::draw_shapes(shapes, red_contours, red_cntrs, "red");
-        shapes = tools::draw_shapes(shapes, blue_contours, blue_cntrs, "blue");
+        shapes = tools::draw_shapes(shapes, blue_contours, interest_points,
+                                    "blue");
     }
     // Draw the marker centre on the shapes image.
-    if (marker_centre.size() == 2) {
+    cout << "number of points: " << interest_points.size() << "\n";
+    if (interest_points.size() == 4) {
         success += 1;
-        cout << "Marker centre at (" << marker_centre[0] << ", "
-                << marker_centre[1] << ")\n";
+        cout << "Marker centre at (" << interest_points[0][0] << ", "
+                << interest_points[0][1] << ")\n";
         if (show == true) {
-            cv::Point centre_point(marker_centre[0], marker_centre[1]);
+            cv::Point centre_point(interest_points[0][0],
+                                   interest_points[0][1]);
             cv::Scalar centre_colour = {255, 255, 255};
             cv::circle(shapes, centre_point, 12, centre_colour, -1);
         }
