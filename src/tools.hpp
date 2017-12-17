@@ -23,8 +23,16 @@ namespace tools {
             cv::Point centre_point(centres[index][0], centres[index][1]);
             cv::drawContours(image, contours, index, shape_colour, CV_FILLED);
             cv::circle(image, centre_point, 7, centre_colour, -1);
-            cv::putText(image, "CENTRE "+to_string(index), centre_point,
-                        cv::FONT_HERSHEY_SIMPLEX, 1, centre_colour, 2);
+        }
+        return image;
+    }
+
+    cv::Mat draw_labels(cv::Mat image, vector< vector<double> > centres) {
+        cv::Scalar label_colour(255, 255, 255); 
+        for (auto index = 0; index < centres.size(); ++index) {
+            cv::Point centre_point(centres[index][0], centres[index][1]);
+            cv::putText(image, "POINT "+to_string(index), centre_point,
+                        cv::FONT_HERSHEY_SIMPLEX, 1, label_colour, 3);
         }
         return image;
     }

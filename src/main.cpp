@@ -9,7 +9,6 @@
 // Local libraries
 #include "binarization.hpp"
 #include "feature_extraction.hpp"
-#include "geometry.hpp"
 #include "segmentation.hpp"
 #include "tools.hpp"
 
@@ -18,38 +17,75 @@ using namespace std;
 
 tuple<cv::Mat, double> marker_colour_pipeline(cv::Mat image, double success,
                                               bool show) {
+    chrono::high_resolution_clock::time_point t_i;
+    chrono::high_resolution_clock::time_point t_1;
+    chrono::high_resolution_clock::time_point t_2;
+    chrono::high_resolution_clock::time_point t_3;
+    chrono::high_resolution_clock::time_point t_f;
     cv::Mat shapes(image.rows, image.cols, CV_8UC3, cv::Scalar(0,0,0));
-    // Get the blue circles position.
+    if (success == 1) {
+        t_i = chrono::high_resolution_clock::now();
+    }
+    // Get 2 binarized images, getting blue and red colours respectively.
     cv::Mat blue_bins = binarization::binarize_blue(image);
+    cv::Mat red_bins = binarization::binarize_red(image);
+    if (success == 1) {
+        t_1 = chrono::high_resolution_clock::now();
+    }
+    //Get the contours from the binarized images.
     auto blues = segmentation::get_contours(blue_bins);
     int n_blues = get<0>(blues);
     vector< vector<cv::Point> > blue_contours = get<1>(blues);
-    vector< vector<double> > blue_cntrs =
-            feature_extraction::get_centers(blue_contours);
-    // geometry::order_centers(blue_cntrs);
-    // Get the red circles position.
-    cv::Mat red_bins = binarization::binarize_red(image);
     auto reds = segmentation::get_contours(red_bins);
     int n_reds = get<0>(reds);
     vector< vector<cv::Point> > red_contours = get<1>(reds);
+    if (success == 1) {
+        t_2 = chrono::high_resolution_clock::now();
+    }
+    // Get the centres of the circles, using the image moments.
+    vector< vector<double> > blue_cntrs =
+            feature_extraction::get_centers(blue_contours);
     vector< vector<double> > red_cntrs =
             feature_extraction::get_centers(red_contours);
-    // Get the marker centre.
+    if (success == 1) {
+        t_3 = chrono::high_resolution_clock::now();
+    }
+    // Get the interest points.
     vector< vector<double> > interest_points = 
             feature_extraction::get_interest_points(red_cntrs, blue_cntrs);
     // Draw the found circles on the shapes image
     if (show == true) {
         shapes = tools::draw_shapes(shapes, red_contours, red_cntrs, "red");
-        shapes = tools::draw_shapes(shapes, blue_contours, interest_points,
-                                    "blue");
+        shapes = tools::draw_shapes(shapes, blue_contours, blue_cntrs, "blue");
     }
     // Draw the marker centre on the shapes image.
     cout << "number of points: " << interest_points.size() << "\n";
+    if (success == 1) {
+        t_f = chrono::high_resolution_clock::now();
+    }
+    if (success == 1) {
+        auto t_d1 = chrono::duration_cast<chrono::microseconds>
+                (t_1 - t_i).count();
+        auto t_d2 = chrono::duration_cast<chrono::microseconds>
+                (t_2 - t_1).count();
+        auto t_d3 = chrono::duration_cast<chrono::microseconds>
+                (t_3 - t_2).count();
+        auto t_d4 = chrono::duration_cast<chrono::microseconds>
+                (t_f - t_3).count();
+        auto t_tot = chrono::duration_cast<chrono::microseconds>
+                (t_f - t_i).count();
+        cout << "Binarization time: " << t_d1 << "us\n";
+        cout << "Segmentation time: " << t_d2 << "us\n";
+        cout << "Centres extraction time: " << t_d3 << "us\n";
+        cout << "Interest points calculation time: " << t_d4 << "us\n";
+        cout << "Total time: " << t_tot << "us\n\n";
+    }
     if (interest_points.size() == 4) {
         success += 1;
         cout << "Marker centre at (" << interest_points[0][0] << ", "
                 << interest_points[0][1] << ")\n";
         if (show == true) {
+            shapes = tools::draw_labels(shapes, interest_points);
             cv::Point centre_point(interest_points[0][0],
                                    interest_points[0][1]);
             cv::Scalar centre_colour = {255, 255, 255};
@@ -68,7 +104,7 @@ tuple<cv::Mat, double> marker_corn_pipeline(cv::Mat image, double success,
     chrono::high_resolution_clock::time_point t_1;
     chrono::high_resolution_clock::time_point t_2;
     chrono::high_resolution_clock::time_point t_f;
-    if (success == 0) {
+    if (success == 1) {
         t_i = chrono::high_resolution_clock::now();
     }
     cv::Mat result_img;
@@ -76,7 +112,7 @@ tuple<cv::Mat, double> marker_corn_pipeline(cv::Mat image, double success,
     auto surf_result = feature_extraction::get_surf_keypoints(image);
     vector<cv::KeyPoint> keypoints = get<0>(surf_result);
     cv::Mat descriptors = get<1>(surf_result);
-    if (success == 0) {
+    if (success == 1) {
         t_1 = chrono::high_resolution_clock::now();
     }
     // Matching descriptor vectors with a brute force matcher
@@ -100,7 +136,7 @@ tuple<cv::Mat, double> marker_corn_pipeline(cv::Mat image, double success,
         object.push_back(ref_keypoints[good_matches[i].queryIdx].pt);
         scene.push_back(keypoints[good_matches[i].trainIdx].pt);
     }
-    if (success == 0) {
+    if (success == 1) {
         t_2 = chrono::high_resolution_clock::now();
     }
     // Draw matches
@@ -112,10 +148,10 @@ tuple<cv::Mat, double> marker_corn_pipeline(cv::Mat image, double success,
             result_img, object, scene, show);
     vector<cv::Point2f> corners = get<0>(result);
     result_img = get<1>(result);
-    if (success == 0) {
+    if (success == 1) {
         t_f = chrono::high_resolution_clock::now();
     }
-    if (success == 0) {
+    if (success == 1) {
         auto t_d1 = chrono::duration_cast<chrono::microseconds>
                 (t_1 - t_i).count();
         auto t_d2 = chrono::duration_cast<chrono::microseconds>
